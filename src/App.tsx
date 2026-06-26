@@ -18,9 +18,91 @@ import {
   Save,
   Ban,
   Plus,
-  Image as ImageIcon
+  Image as ImageIcon,
+  GripHorizontal
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import './App.css';
+
+// Componente individual ordenable
+function SortableSupplierCard({ supplier, onClick }: { supplier: Supplier, onClick: () => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: supplier.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className="supplier-card"
+    >
+      <div 
+        className="drag-handle" 
+        {...attributes} 
+        {...listeners}
+        title="Arrastra para reordenar"
+      >
+        <GripHorizontal size={20} />
+      </div>
+      
+      <div className="card-content" onClick={onClick}>
+        <div className="card-header">
+          <div className="logo-container">
+            {supplier.logoUrl ? (
+              <img src={supplier.logoUrl} alt={supplier.name} onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>';
+              }}/>
+            ) : (
+              <Building2 size={32} color="#8b949e" />
+            )}
+          </div>
+          <h2 className="supplier-name">{supplier.name}</h2>
+        </div>
+        
+        <div className="tags-container">
+          {supplier.tags?.map(tag => (
+            <span key={tag} className="tag">{tag}</span>
+          ))}
+        </div>
+
+        <div className="card-footer">
+          <span>{supplier.repName || 'Sin asesor'}</span>
+          <span>{supplier.creditDays || 0} días crédito</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function App() {
   const [localSuppliers, setLocalSuppliers] = useState<Supplier[]>([]);
@@ -29,6 +111,18 @@ function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [editFormData, setEditFormData] = useState<Supplier | null>(null);
+
+  // Configuración de sensores para DnD (ignorar clics rápidos)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem('herramax_suppliers');
@@ -116,6 +210,21 @@ function App() {
     }
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setLocalSuppliers((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        
+        const newArray = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem('herramax_suppliers', JSON.stringify(newArray));
+        return newArray;
+      });
+    }
+  };
+
   return (
     <div className="app-container">
       <header className="header">
@@ -123,45 +232,30 @@ function App() {
         <p>Herramax Plus B2B</p>
       </header>
 
-      <main className="suppliers-grid">
-        {localSuppliers.map(supplier => (
-          <div 
-            key={supplier.id} 
-            className="supplier-card"
-            onClick={() => {
-              setSelectedSupplierId(supplier.id);
-              setIsEditing(false);
-              setIsCreating(false);
-            }}
+      <DndContext 
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <main className="suppliers-grid">
+          <SortableContext 
+            items={localSuppliers.map(s => s.id)}
+            strategy={rectSortingStrategy}
           >
-            <div className="card-header">
-              <div className="logo-container">
-                {supplier.logoUrl ? (
-                  <img src={supplier.logoUrl} alt={supplier.name} onError={(e) => {
-                    // Fallback si la imagen está rota
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>';
-                  }}/>
-                ) : (
-                  <Building2 size={32} color="#8b949e" />
-                )}
-              </div>
-              <h2 className="supplier-name">{supplier.name}</h2>
-            </div>
-            
-            <div className="tags-container">
-              {supplier.tags?.map(tag => (
-                <span key={tag} className="tag">{tag}</span>
-              ))}
-            </div>
-
-            <div className="card-footer">
-              <span>{supplier.repName || 'Sin asesor'}</span>
-              <span>{supplier.creditDays || 0} días crédito</span>
-            </div>
-          </div>
-        ))}
-      </main>
+            {localSuppliers.map(supplier => (
+              <SortableSupplierCard 
+                key={supplier.id}
+                supplier={supplier}
+                onClick={() => {
+                  setSelectedSupplierId(supplier.id);
+                  setIsEditing(false);
+                  setIsCreating(false);
+                }}
+              />
+            ))}
+          </SortableContext>
+        </main>
+      </DndContext>
 
       <div className="fab-container">
         <button className="fab" onClick={handleCreateNew} title="Agregar Nuevo Proveedor">
