@@ -2,6 +2,7 @@
   "name": "proveedores-dashboard",
   "private": true,
   "version": "0.0.0",
+  "homepage": "https://paocarvajal.github.io/directorio-proveedores",
   "type": "module",
   "scripts": {
     "dev": "vite",
