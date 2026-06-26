@@ -99,6 +99,7 @@
   justify-content: center;
   box-shadow: 0 4px 10px rgba(0,0,0,0.3);
   overflow: hidden;
+  position: relative;
 }
 
 .logo-container img {
@@ -182,7 +183,27 @@
 .modal-header .logo-container {
   width: 80px;
   height: 80px;
+  flex-shrink: 0;
 }
+
+.logo-edit-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  border-radius: 12px;
+}
+
+.logo-container:hover .logo-edit-overlay {
+  opacity: 1;
+}
+
 
 .modal-header h2 {
   font-size: 1.8rem;

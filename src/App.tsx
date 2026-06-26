@@ -210,6 +210,17 @@ function App() {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleInputChange('logoUrl', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -279,9 +290,30 @@ function App() {
             )}
 
             <div className="modal-header">
-              <div className="logo-container">
-                {selectedSupplier.logoUrl && !isEditing ? (
-                  <img key={selectedSupplier.logoUrl} src={selectedSupplier.logoUrl} alt={selectedSupplier.name} onError={(e) => {
+              <div 
+                className="logo-container" 
+                style={isEditing ? { cursor: 'pointer' } : {}}
+                onClick={() => {
+                  if (isEditing) {
+                    document.getElementById('logo-upload')?.click();
+                  }
+                }}
+              >
+                {isEditing && (
+                  <div className="logo-edit-overlay">
+                    <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Cambiar</span>
+                  </div>
+                )}
+                <input 
+                  type="file" 
+                  id="logo-upload" 
+                  accept="image/*" 
+                  style={{ display: 'none' }} 
+                  onChange={handleImageUpload}
+                />
+                
+                {(isEditing ? editFormData?.logoUrl : selectedSupplier.logoUrl) ? (
+                  <img key={(isEditing ? editFormData?.logoUrl : selectedSupplier.logoUrl)} src={(isEditing ? editFormData?.logoUrl : selectedSupplier.logoUrl)} alt={selectedSupplier.name} onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}/>
                 ) : (
